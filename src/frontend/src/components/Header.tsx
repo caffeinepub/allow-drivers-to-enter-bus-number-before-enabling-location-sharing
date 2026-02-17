@@ -1,29 +1,24 @@
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGetCallerUserProfile } from '../hooks/useQueries';
-import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bus, LogOut, UserPlus, LogIn } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { User, LogOut, Shield, Bus, MapPin } from 'lucide-react';
+import { UserRole } from '../backend';
 
 interface HeaderProps {
   onNavigate: (page: 'register' | 'login' | 'admin' | 'driver' | 'traveller') => void;
-  currentPage: string;
+  currentPage?: string;
 }
 
 export default function Header({ onNavigate, currentPage }: HeaderProps) {
-  const { identity, clear } = useInternetIdentity();
+  const { identity, clear, loginStatus } = useInternetIdentity();
   const { data: userProfile } = useGetCallerUserProfile();
   const queryClient = useQueryClient();
+
   const isAuthenticated = !!identity;
+  const isLoggingOut = loginStatus === 'logging-in';
 
   const handleLogout = async () => {
     await clear();
@@ -31,76 +26,69 @@ export default function Header({ onNavigate, currentPage }: HeaderProps) {
     onNavigate('login');
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const getRoleDisplay = () => {
+    if (!userProfile) return null;
+    
+    if (userProfile.role === UserRole.admin) {
+      return { icon: Shield, label: 'Admin', page: 'admin' as const };
+    } else if (userProfile.busNumber) {
+      return { icon: Bus, label: 'Driver', page: 'driver' as const };
+    } else {
+      return { icon: MapPin, label: 'Traveller', page: 'traveller' as const };
+    }
   };
 
+  const roleDisplay = getRoleDisplay();
+
   return (
-    <header className="relative z-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 font-bold text-xl">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-            <Bus className="w-5 h-5 text-white" />
-          </div>
-          <span className="hidden sm:inline">College Bus Tracking</span>
+    <header className="relative z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Bus Tracker
+          </h1>
         </div>
 
-        <nav className="flex items-center gap-2">
-          {!isAuthenticated ? (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => onNavigate('register')}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Register
-              </Button>
-              <Button size="sm" onClick={() => onNavigate('login')}>
-                <LogIn className="w-4 h-4 mr-2" />
+        <div className="flex items-center gap-4">
+          {isAuthenticated && userProfile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <User className="w-4 h-4" />
+                  {userProfile.name}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {roleDisplay && (
+                  <>
+                    <DropdownMenuItem onClick={() => onNavigate(roleDisplay.page)}>
+                      <roleDisplay.icon className="w-4 h-4 mr-2" />
+                      {roleDisplay.label} Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : isAuthenticated ? (
+            <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </Button>
+          ) : (
+            currentPage !== 'login' && (
+              <Button onClick={() => onNavigate('login')}>
                 Sign In
               </Button>
-            </>
-          ) : (
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                        {userProfile ? getInitials(userProfile.name) : 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{userProfile?.name || 'User'}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {userProfile?.role === 'admin' ? 'Administrator' : userProfile?.busNumber ? 'Driver' : 'Traveller'}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => {
-                    if (userProfile?.role === 'admin') onNavigate('admin');
-                    else if (userProfile?.busNumber) onNavigate('driver');
-                    else onNavigate('traveller');
-                  }}>
-                    Dashboard
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+            )
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

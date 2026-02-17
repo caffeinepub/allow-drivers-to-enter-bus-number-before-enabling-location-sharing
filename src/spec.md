@@ -1,13 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Require drivers to register a bus number on the Driver Dashboard before they can enable live location sharing.
+**Goal:** Fix role registration (traveller/driver/admin) so signed-in users can register without backend traps and are routed to the correct dashboard based on their saved profile/role.
 
 **Planned changes:**
-- Update the Driver Dashboard to detect when the logged-in driver has no bus number and show a bus number entry form with a clear save/register action.
-- Disable (or replace) the “Share Live Location” control until a valid bus number is successfully registered.
-- On bus number submission, call the existing driver registration mutation (driverRegister), show success/error feedback, and refresh the cached user/driver profile so the dashboard updates immediately.
-- Clean up the “no bus number” UI state to avoid empty bus labels/badges, and guard location update logic so updates are only sent when sharing is enabled and a bus number exists.
-- Ensure all user-facing text for this flow is in English.
+- Diagnose and fix the end-to-end registration flow for Traveller and Driver so backend returns a structured success/failure and the frontend navigates only on success.
+- Update backend adminRegister/driverRegister/travellerRegister to avoid Runtime.trap for expected errors; return RegistrationStatus.failure with clear English messages instead.
+- Align backend UserProfile.role encoding with candid-generated frontend types so App.tsx can reliably detect admin/driver/traveller and route accordingly.
+- Implement a workable admin registration rule: allow first admin creation when none exists; otherwise enforce authorization and return friendly failure messages (no traps).
+- Ensure frontend displays exact backend failure messages for registration failures and avoids unhandled exceptions/blank screens.
 
-**User-visible outcome:** A driver without a bus number will be prompted to enter and register one on the dashboard, and only then can they turn on live location sharing; errors prevent enabling sharing until resolved.
+**User-visible outcome:** When signed in with Internet Identity, users can successfully register as Traveller or Driver (with valid bus number) and be taken to the correct dashboard; admin registration works for first-time setup or authorized admins, and any registration failure shows a clear backend-provided message without crashing or navigating away.

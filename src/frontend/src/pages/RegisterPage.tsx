@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAdminRegister, useDriverRegister, useTravellerRegister } from '../hooks/useQueries';
+import { useAdminRegister, useDriverRegister, useTravellerRegister, useGetCallerUserProfile } from '../hooks/useQueries';
 import { toast } from 'sonner';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { Shield, Bus, User } from 'lucide-react';
+import { Shield, Bus, User, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { UserRole } from '../backend';
 
 interface RegisterPageProps {
   onNavigate: (page: 'register' | 'login' | 'admin' | 'driver' | 'traveller') => void;
@@ -17,19 +19,32 @@ interface RegisterPageProps {
 
 export default function RegisterPage({ onNavigate }: RegisterPageProps) {
   const [driverBusNumber, setDriverBusNumber] = useState('');
+  const { identity } = useInternetIdentity();
+  const { refetch: refetchProfile } = useGetCallerUserProfile();
 
   const adminRegister = useAdminRegister();
   const driverRegister = useDriverRegister();
   const travellerRegister = useTravellerRegister();
 
+  const isAuthenticated = !!identity;
+
   const handleAdminRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to register as an admin');
+      return;
+    }
 
     try {
       const result = await adminRegister.mutateAsync('admin');
       if (result.__kind__ === 'success') {
         toast.success('Admin registered successfully!');
-        onNavigate('admin');
+        // Wait for profile to refresh before navigating
+        const { data: profile } = await refetchProfile();
+        if (profile && profile.role === UserRole.admin) {
+          onNavigate('admin');
+        }
       } else {
         toast.error(result.failure);
       }
@@ -41,6 +56,11 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
 
   const handleDriverRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to register as a driver');
+      return;
+    }
     
     const trimmedBusNumber = driverBusNumber.trim();
     
@@ -60,7 +80,11 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
       if (result.__kind__ === 'success') {
         toast.success('Driver registered successfully! You can now manage your bus.');
         setDriverBusNumber('');
-        onNavigate('driver');
+        // Wait for profile to refresh before navigating
+        const { data: profile } = await refetchProfile();
+        if (profile && profile.busNumber) {
+          onNavigate('driver');
+        }
       } else {
         toast.error(result.failure);
       }
@@ -74,11 +98,20 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
   const handleTravellerRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isAuthenticated) {
+      toast.error('Please sign in first to register as a traveller');
+      return;
+    }
+
     try {
       const result = await travellerRegister.mutateAsync();
       if (result.__kind__ === 'success') {
         toast.success('Traveller registered successfully!');
-        onNavigate('traveller');
+        // Wait for profile to refresh before navigating
+        const { data: profile } = await refetchProfile();
+        if (profile && !profile.busNumber && profile.role === UserRole.user) {
+          onNavigate('traveller');
+        }
       } else {
         toast.error(result.failure);
       }
@@ -108,6 +141,21 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
             <CardDescription>Choose your role to get started</CardDescription>
           </CardHeader>
           <CardContent>
+            {!isAuthenticated && (
+              <Alert className="mb-6 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                <AlertDescription className="text-orange-900 dark:text-orange-100">
+                  <strong>Authentication Required:</strong> Please sign in with Internet Identity before registering. You can sign in from the{' '}
+                  <button
+                    onClick={() => onNavigate('login')}
+                    className="underline font-semibold hover:text-orange-700 dark:hover:text-orange-300"
+                  >
+                    login page
+                  </button>.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Tabs defaultValue="traveller" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="admin" className="gap-2">
@@ -135,7 +183,7 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
                   <p className="text-sm text-muted-foreground text-center">
                     Click below to register as an admin. Your account will be automatically configured.
                   </p>
-                  <Button type="submit" className="w-full" disabled={adminRegister.isPending}>
+                  <Button type="submit" className="w-full" disabled={adminRegister.isPending || !isAuthenticated}>
                     {adminRegister.isPending ? 'Registering...' : 'Register as Admin'}
                   </Button>
                 </form>
@@ -156,13 +204,13 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
                       placeholder="e.g., BUS-101"
                       value={driverBusNumber}
                       onChange={(e) => setDriverBusNumber(e.target.value)}
-                      disabled={driverRegister.isPending}
+                      disabled={driverRegister.isPending || !isAuthenticated}
                       required
                       className="font-mono"
                     />
                     <p className="text-xs text-muted-foreground">Bus number must be 6-9 characters, no spaces</p>
                   </div>
-                  <Button type="submit" className="w-full" disabled={driverRegister.isPending}>
+                  <Button type="submit" className="w-full" disabled={driverRegister.isPending || !isAuthenticated}>
                     {driverRegister.isPending ? 'Registering...' : 'Register as Driver'}
                   </Button>
                 </form>
@@ -179,7 +227,7 @@ export default function RegisterPage({ onNavigate }: RegisterPageProps) {
                   <p className="text-sm text-muted-foreground text-center">
                     Click below to register as a traveller. Your account will be automatically configured.
                   </p>
-                  <Button type="submit" className="w-full" disabled={travellerRegister.isPending}>
+                  <Button type="submit" className="w-full" disabled={travellerRegister.isPending || !isAuthenticated}>
                     {travellerRegister.isPending ? 'Registering...' : 'Register as Traveller'}
                   </Button>
                 </form>

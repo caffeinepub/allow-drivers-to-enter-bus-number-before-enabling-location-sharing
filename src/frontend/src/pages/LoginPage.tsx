@@ -1,6 +1,5 @@
 import React from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile } from '../hooks/useQueries';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogIn, Loader2 } from 'lucide-react';
@@ -14,30 +13,17 @@ interface LoginPageProps {
 
 export default function LoginPage({ onNavigate }: LoginPageProps) {
   const { login, loginStatus, identity } = useInternetIdentity();
-  const { data: userProfile, isLoading: profileLoading } = useGetCallerUserProfile();
-
-  React.useEffect(() => {
-    if (identity && userProfile && !profileLoading) {
-      // Navigate to appropriate dashboard
-      if (userProfile.role === 'admin') {
-        onNavigate('admin');
-      } else if (userProfile.busNumber) {
-        onNavigate('driver');
-      } else {
-        onNavigate('traveller');
-      }
-    }
-  }, [identity, userProfile, profileLoading, onNavigate]);
 
   const handleLogin = async () => {
     try {
       await login();
+      // Navigation will be handled by App.tsx after profile is fetched
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
     }
   };
 
-  const isLoading = loginStatus === 'logging-in' || (identity && profileLoading);
+  const isLoading = loginStatus === 'logging-in';
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">

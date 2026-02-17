@@ -1,41 +1,23 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
-import Cargo "mo:core/List";
 import Order "mo:core/Order";
-import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Float "mo:core/Float";
 import Text "mo:core/Text";
-
-import Debug "mo:core/Debug";
+import Runtime "mo:core/Runtime";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-
-// Attach migration logic to actor with-clause
 
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
   public type UserRole = AccessControl.UserRole;
-
-  public type UserStatus = {
-    #active;
-    #inactive;
-  };
-
-  public type RegistrationStatus = {
-    #success;
-    #failure : Text;
-  };
-
-  public type LocationUpdateStatus = {
-    #success;
-    #notFound;
-    #inactive;
-  };
+  public type UserStatus = { #active; #inactive };
+  public type RegistrationStatus = { #success; #failure : Text };
+  public type LocationUpdateStatus = { #success; #notFound; #inactive };
 
   public type User = {
     id : Principal;
@@ -63,11 +45,7 @@ actor {
     busNumber : ?Text;
   };
 
-  public type AdminRole = {
-    #admin;
-    #driver;
-    #traveller;
-  };
+  public type AdminRole = { #admin; #driver; #traveller };
 
   module AdminRole {
     public func fromText(text : Text) : ?AdminRole {
@@ -105,6 +83,39 @@ actor {
   let travellers = Map.empty<Principal, User>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
+  private func isRegisteredUser(principal : Principal) : Bool {
+    if (principal.isAnonymous()) {
+      return false;
+    };
+    switch (userProfiles.get(principal)) {
+      case (null) { false };
+      case (?_) { true };
+    };
+  };
+
+  // Helper function to check if caller is registered user or admin
+  private func requireRegisteredUser(caller : Principal) {
+    if (not isRegisteredUser(caller) and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only registered users can perform this action");
+    };
+  };
+
+  private func isAdminRegistered() : Bool {
+    var found = false;
+    let iter = userProfiles.values();
+    while (not found) {
+      switch (iter.next()) {
+        case (null) { return found };
+        case (?profile) {
+          if (profile.role == #admin) {
+            found := true;
+          };
+        };
+      };
+    };
+    found;
+  };
+
   public shared ({ caller }) func adminRegister(roleText : Text) : async RegistrationStatus {
     let roleOpt = AdminRole.fromText(roleText);
     switch (roleOpt) {
@@ -112,12 +123,13 @@ actor {
       case (?role) {
         switch (role) {
           case (#admin) {
-            if (not AccessControl.isAdmin(accessControlState, caller)) {
-              Runtime.trap("Unauthorized: Only admins can register another admin");
+            if (isRegisteredUser(caller)) {
+              return #failure("User already registered");
             };
-            switch (userProfiles.get(caller)) {
-              case (?_) { return #failure("User already registered") };
-              case null {};
+            if (isAdminRegistered()) {
+              if (not AccessControl.isAdmin(accessControlState, caller)) {
+                return #failure("Unauthorized: Only admins can register another admin. Please contact the system administrator.");
+              };
             };
             let profile : UserProfile = {
               name = "Admin";
@@ -129,18 +141,16 @@ actor {
           };
           case (#driver) {
             if (not AccessControl.isAdmin(accessControlState, caller)) {
-              Runtime.trap("Unauthorized: Only admins can register a driver");
+              return #failure("Unauthorized: Only admins can register a driver. Please contact the system administrator.");
             };
             #failure("Driver registration requires a valid bus number. Please use the driver registration process.");
           };
           case (#traveller) {
             if (not AccessControl.isAdmin(accessControlState, caller)) {
-              Runtime.trap("Unauthorized: Only admins can register a traveller");
+              return #failure("Unauthorized: Only admins can register a traveller. Please contact the system administrator.");
             };
-            switch (userProfiles.get(caller)) {
-              case (?_) { return #failure("User already registered") };
-              case null {};
-            };
+            if (isRegisteredUser(caller)) { return #failure("User already registered") };
+
             let profile : UserProfile = {
               name = "Traveller";
               role = #user;
@@ -155,9 +165,7 @@ actor {
   };
 
   public shared ({ caller }) func driverRegister(busNumber : Text) : async RegistrationStatus {
-    // Allow guests to register as drivers (self-registration)
-    // This is intentional for the application flow where new users can sign up
-    
+    // Allow self-registration for drivers
     if (not Text.equal(busNumber, busNumber.trim(#char(' ')))) {
       return #failure("Bus number cannot contain spaces, please try again");
     };
@@ -165,11 +173,7 @@ actor {
       return #failure("Bus number must contain at least 6 characters and at most 9. Please try again.");
     };
 
-    switch (userProfiles.get(caller)) {
-      case (?_) { return #failure("User already registered") };
-      case null {};
-    };
-
+    if (isRegisteredUser(caller)) { return #failure("User already registered") };
     switch (drivers.get(busNumber)) {
       case (?_) { return #failure("Bus number already registered") };
       case null {};
@@ -200,12 +204,9 @@ actor {
   };
 
   public shared ({ caller }) func travellerRegister() : async RegistrationStatus {
-    // Allow guests to register as travellers (self-registration)
-    // This is intentional for the application flow where new users can sign up
-    
-    switch (userProfiles.get(caller)) {
-      case (?_) { return #failure("User already registered") };
-      case null {};
+    // Allow self-registration for travellers
+    if (isRegisteredUser(caller)) {
+      return #failure("User already registered");
     };
 
     let traveller = {
@@ -228,8 +229,6 @@ actor {
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    // No authorization check needed - users can view their own profile
-    // Returns null for guests/unregistered users
     userProfiles.get(caller);
   };
 
@@ -241,48 +240,38 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
-    switch (userProfiles.get(caller)) {
-      case null { Runtime.trap("Unauthorized: User not registered") };
-      case (?_) {};
-    };
+    requireRegisteredUser(caller);
     userProfiles.add(caller, profile);
   };
 
   public query ({ caller }) func getAllDrivers() : async [Driver] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all drivers");
+      Runtime.trap("Unauthorized: Only admins can perform this action");
     };
     drivers.values().toArray().sort();
   };
 
   public query ({ caller }) func getAllTravellers() : async [User] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all travellers");
+      Runtime.trap("Unauthorized: Only admins can perform this action");
     };
     travellers.values().toArray().sort();
   };
 
   public query ({ caller }) func getDriver(busNumber : Text) : async ?Driver {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view driver information");
-    };
+    requireRegisteredUser(caller);
     drivers.get(busNumber);
   };
 
   public shared ({ caller }) func updateLocation(busNumber : Text, location : Location) : async LocationUpdateStatus {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can update location");
-    };
+    requireRegisteredUser(caller);
 
     let driverOpt = drivers.get(busNumber);
     switch (driverOpt) {
       case (null) { #notFound };
       case (?driver) {
         if (driver.userData.id != caller) {
-          Runtime.trap("Unauthorized: Can only update your own bus location");
+          Runtime.trap("Unauthorized: Can only update your own location");
         };
         if (not driver.isSharingLocation) { return #inactive };
         let updatedDriver : Driver = {
@@ -298,16 +287,14 @@ actor {
   };
 
   public shared ({ caller }) func toggleLocationSharing(busNumber : Text) : async Bool {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can toggle location sharing");
-    };
+    requireRegisteredUser(caller);
 
     let driverOpt = drivers.get(busNumber);
     switch (driverOpt) {
       case (null) { false };
       case (?driver) {
         if (driver.userData.id != caller) {
-          Runtime.trap("Unauthorized: Can only toggle location sharing for your own bus");
+          Runtime.trap("Unauthorized: Can only toggle your own location sharing");
         };
         let updatedDriver : Driver = {
           userData = driver.userData;
@@ -322,9 +309,7 @@ actor {
   };
 
   public query ({ caller }) func getLocation(busNumber : Text) : async ?Location {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view bus locations");
-    };
+    requireRegisteredUser(caller);
     switch (drivers.get(busNumber)) {
       case (null) { null };
       case (?driver) { driver.currentLocation };
@@ -333,7 +318,7 @@ actor {
 
   public shared ({ caller }) func deactivateUser(user : Principal) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can deactivate users");
+      Runtime.trap("Unauthorized: Only admins can perform this action");
     };
 
     switch (travellers.get(user)) {
@@ -367,7 +352,7 @@ actor {
 
   public shared ({ caller }) func activateUser(user : Principal) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can activate users");
+      Runtime.trap("Unauthorized: Only admins can perform this action");
     };
 
     switch (travellers.get(user)) {
@@ -400,9 +385,7 @@ actor {
   };
 
   public query ({ caller }) func getBusLocation(busNumber : Text) : async ?Location {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only registered users can view bus locations");
-    };
+    requireRegisteredUser(caller);
     switch (drivers.get(busNumber)) {
       case (null) { null };
       case (?driver) { driver.currentLocation };

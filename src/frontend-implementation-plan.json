@@ -1,58 +1,64 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Driver bus number gating for location sharing",
+  "title": "Fix role registration flow and role-based routing (frontend-only)",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Gate Driver Dashboard location sharing behind an initial bus number entry step when the driver has no bus number yet.",
+      "id": "REQ-4",
+      "summary": "Ensure traveller/driver registration succeeds without frontend crashes, displays backend failure messages, and navigates to the correct dashboard after success.",
       "acceptanceCriteria": [
-        "When a driver profile has no bus number (null/empty), the Driver Dashboard shows an editable 'Bus Number' input and a clear call-to-action (e.g., 'Save' / 'Register bus').",
-        "The 'Share Live Location' switch is disabled (and/or the location sharing card is replaced by an info prompt) until a bus number is successfully saved/registered.",
-        "All user-facing text related to this flow is in English."
+        "When signed in with Internet Identity, clicking “Register as Traveller” results in a backend RegistrationStatus success and the app navigates to the Traveller dashboard.",
+        "When signed in with Internet Identity, registering as Driver with a valid bus number results in RegistrationStatus success and the app navigates to the Driver dashboard.",
+        "If registration fails, the UI shows the exact failure message returned by the backend (RegistrationStatus.failure) and does not navigate away.",
+        "No registration attempt results in an unhandled exception or blank screen in the frontend."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/DriverDashboard.tsx",
-          "operation": "modify",
-          "description": "Add a 'bus number required' state to the Driver Dashboard: when the caller profile busNumber is empty, render a bus number entry form (Input + Button composed from existing shadcn/ui components; do not modify any files under frontend/src/components/ui) and prevent location sharing by disabling/hiding the share UI until a valid bus number is saved. Ensure all new labels, helper text, and prompts are English."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Submit bus number from Driver Dashboard using the existing driver registration mutation and refresh cached profile/driver data for immediate UI unlock.",
-      "acceptanceCriteria": [
-        "Submitting the bus number from the Driver Dashboard calls the existing driver registration mutation (driverRegister) and shows success/failure feedback.",
-        "On success, the app refreshes the cached caller profile and driver data so the dashboard immediately displays the saved bus number and enables the 'Share Live Location' toggle.",
-        "If registration fails (e.g., bus number already registered or invalid length), the dashboard shows the error and does not enable location sharing."
-      ],
-      "file_operations": [
+          "path": "frontend/src/utils/backendErrors.ts",
+          "operation": "create",
+          "description": "Add a small helper to normalize/unwrap backend call errors (including trapped/rejected calls) into a user-facing English message so registration can always surface a readable error instead of crashing. Verify the component's usage instructions before implementing."
+        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Enhance the existing useDriverRegister mutation to invalidate/refetch any driver-specific cached data that should update immediately after registration (in addition to currentUserProfile), so the Driver Dashboard can immediately reflect the saved bus number and related driver state without a hard reload."
+          "description": "Harden registration-related React Query mutations and the getCallerUserProfile query against thrown errors: (1) ensure mutations consistently return a RegistrationStatus-shaped result or throw a normalized Error using the shared backend error helper, (2) ensure registration success invalidates/refetches currentUserProfile, and (3) prevent query errors from causing blank-screen behavior by handling expected authorization/registration-not-found failures gracefully. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/DriverDashboard.tsx",
+          "path": "frontend/src/pages/RegisterPage.tsx",
           "operation": "modify",
-          "description": "Wire the new bus number form to the existing useDriverRegister mutation; add basic client-side validation (e.g., trimmed non-empty and a simple format/length check consistent with the app) and show success/failure feedback (toast and/or inline alert). On success, refetch/invalidate the caller profile query (and any relevant driver query) so the UI immediately shows the saved bus number and enables location sharing; on failure, keep sharing disabled and show the backend-provided error message."
+          "description": "Update admin/driver/traveller registration handlers to: (1) rely on RegistrationStatus for success/failure messaging (show exact failure string), (2) only navigate after confirming the refreshed caller profile indicates the expected role (driver via non-empty busNumber; traveller otherwise; admin via role), and (3) use the shared backend error helper for non-RegistrationStatus exceptions to avoid unhandled errors/blank screens. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Adjust post-auth routing so it waits for a stable profile fetch after registration invalidation and routes deterministically based on the refreshed profile, without relying on brittle immediate navigation. Also ensure any errors from profile fetching do not crash rendering. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-3",
-      "summary": "Cleanly handle the no-bus-number state in bus info and location sharing UI and ensure location updates only send when both sharing is enabled and a bus number exists.",
+      "id": "REQ-6",
+      "summary": "Make frontend role interpretation and routing compatible with the candid-generated UserProfile.role type and reliable across admin/driver/traveller.",
       "acceptanceCriteria": [
-        "When no bus number exists, the dashboard does not render an empty bus badge/value; instead it shows a clear placeholder/state.",
-        "The location update effect does not attempt to send updates when bus number is empty or sharing is off (no unnecessary updateLocation calls).",
-        "Once a bus number is set and sharing is toggled on, location updates proceed normally as before."
+        "After successful Traveller registration, getCallerUserProfile returns a non-null profile that the frontend interprets as a traveller and routes to the Traveller dashboard.",
+        "After successful Driver registration, getCallerUserProfile returns a non-null profile with a non-null busNumber and the frontend routes to the Driver dashboard.",
+        "After successful Admin registration (when permitted), getCallerUserProfile indicates an admin role and the frontend routes to the Admin dashboard.",
+        "App.tsx does not compare role values in a way that can never be true for the actual candid-generated role type."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/DriverDashboard.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Adjust Bus Information and Location Sharing UI rendering to avoid empty bus labels (e.g., no empty Badge or 'Bus ' strings when busNumber is empty). Replace with a clear placeholder and/or an informational prompt directing the user to register a bus number. Ensure the share toggle remains disabled when busNumber is empty, and add a defensive guard so location update mutations are never triggered unless both conditions are true: a bus number exists and sharing is enabled."
+          "description": "Update role checks to use the generated UserRole enum (e.g., UserRole.admin) instead of raw string literals, and centralize the 'determine dashboard' logic (admin vs driver via busNumber vs traveller) to match the generated types. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/Header.tsx",
+          "operation": "modify",
+          "description": "Align header role display and dashboard navigation logic with the same generated UserRole enum and shared role-to-dashboard rules used by App.tsx, so UI labels and navigation match the actual candid-generated role values. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/RegisterPage.tsx",
+          "operation": "modify",
+          "description": "After successful registration, use the refreshed getCallerUserProfile result to decide navigation (admin via role enum; driver via non-empty busNumber; traveller otherwise) to avoid mismatches when backend role encodings change. Verify the component's usage instructions before implementing."
         }
       ]
     }

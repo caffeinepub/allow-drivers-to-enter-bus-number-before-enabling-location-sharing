@@ -1,38 +1,45 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T16:50:47.744Z",
-  "summary": "Diff appears to implement driver bus-number gating on the Driver Dashboard and adds React Query cache invalidation after driverRegister, but it also includes unrequested/constraint-violating changes (notably modifying an immutable hook file) and adds a project_state.json describing non-goal features (email/password + default admin creds). Due to truncation, some UI acceptance criteria cannot be fully verified from the provided evidence.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-17T19:24:11.875Z",
+  "summary": "Diff implements frontend-side improvements for registration/navigation and error handling, and shows partial backend changes to return #failure for some adminRegister cases. However, the backend changes are truncated and do not provide evidence that driverRegister/travellerRegister (and the full adminRegister logic) were updated to avoid Runtime.trap in expected error cases, nor that getCallerUserProfile/UserProfile.role encoding was aligned end-to-end.",
+  "missing_requirements": [
     {
-      "description": "Modified an immutable hook file that was explicitly listed as 'do not modify' (useInternetIdentity.ts).",
-      "reason": "BuildRequest constraints prohibit changes to frontend/src/hooks/useInternetIdentity.ts (and related immutable hook files), but the diff shows it was modified.",
+      "id": "REQ-5",
+      "requirement": "Update backend registration methods (adminRegister/driverRegister/travellerRegister) to avoid using Runtime.trap for expected registration errors; return RegistrationStatus.failure with an English message instead.",
+      "reason": "Only a portion of adminRegister is shown returning #failure; there is no diff evidence for driverRegister/travellerRegister behavior, and the backend file is truncated so it cannot be confirmed that traps were removed across all expected error paths.",
       "evidence": [
-        "frontend/src/hooks/useInternetIdentity.ts"
+        "backend/main.mo (truncated; shows requireRegisteredUser still using Runtime.trap and only partial adminRegister logic)"
       ]
     },
     {
-      "description": "Introduced/recorded non-goal features: email/password authentication and an admin account with default credentials.",
-      "reason": "BuildRequest non-goals explicitly exclude email/password auth and any admin default username/password system, yet the added project_state.json summary describes these features.",
+      "id": "REQ-6",
+      "requirement": "Fix backend role/profile values so the frontend can reliably determine admin/driver/traveller based on getCallerUserProfile output, aligning backend UserProfile.role encoding with generated frontend types.",
+      "reason": "Frontend routing now compares against UserRole.admin and uses busNumber presence, but the diff does not include getCallerUserProfile implementation or evidence that backend UserProfile.role values returned match the candid-generated frontend UserRole type across roles.",
       "evidence": [
-        "project_state.json"
+        "backend/main.mo (truncated; type definitions shown but not getCallerUserProfile implementation/returned values)",
+        "frontend/src/App.tsx (role routing logic updated, but depends on backend correctness)"
       ]
     },
     {
-      "description": "General unrequested product/UX changes across multiple pages (e.g., App navigation defaulting to login, landing page content, map animations, admin dashboard text about a default admin).",
-      "reason": "These changes are described in frontend-file-summaries.txt but are not requested in REQ-1..REQ-3, which are limited to Driver Dashboard bus-number gating and related query refresh behavior.",
+      "id": "REQ-7",
+      "requirement": "Enable workable admin registration: allow first admin if none exists; otherwise restrict and return friendly failure messages without traps.",
+      "reason": "The diff shows an isAdminRegistered() helper and some #failure messages for unauthorized admin creation, but the adminRegister logic is truncated, so it cannot be confirmed that 'first admin can be created when none exists' is fully implemented end-to-end and that no traps remain in admin registration paths.",
       "evidence": [
-        "frontend-file-summaries.txt"
+        "backend/main.mo (truncated; shows isAdminRegistered() and partial adminRegister)"
       ]
     }
   ],
-  "confidence": 0.68,
+  "hallucinated_features": [],
+  "confidence": 0.55,
   "changed_files": [
+    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/hooks/useInternetIdentity.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/components/Header.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/DriverDashboard.tsx",
+    "frontend/src/pages/RegisterPage.tsx",
+    "frontend/src/utils/backendErrors.ts",
     "project_state.json"
   ]
 }

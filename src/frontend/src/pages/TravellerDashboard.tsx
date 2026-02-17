@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useGetBusLocation } from '../hooks/useQueries';
+import { useGetBusLocation, useGetDriver } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BusMap from '../components/BusMap';
-import { MapPin, Search, Bus, Clock, Info, RefreshCw } from 'lucide-react';
+import { MapPin, Search, Bus, Clock, Info, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TravellerDashboardProps {
@@ -19,7 +19,9 @@ interface TravellerDashboardProps {
 export default function TravellerDashboard({ onNavigate }: TravellerDashboardProps) {
   const [busNumber, setBusNumber] = useState('');
   const [trackingBus, setTrackingBus] = useState<string | null>(null);
-  const { data: location, isLoading, refetch } = useGetBusLocation(trackingBus);
+  
+  const { data: location, isLoading: locationLoading, error: locationError, refetch } = useGetBusLocation(trackingBus);
+  const { data: driver, isLoading: driverLoading, error: driverError } = useGetDriver(trackingBus);
 
   const handleTrackBus = () => {
     if (!busNumber.trim()) {
@@ -47,6 +49,53 @@ export default function TravellerDashboard({ onNavigate }: TravellerDashboardPro
     const date = new Date(Number(timestamp) / 1000000);
     return date.toLocaleTimeString();
   };
+
+  // Determine the status of the tracked bus
+  const getBusStatus = () => {
+    if (!trackingBus) return null;
+    
+    if (locationError || driverError) {
+      return {
+        type: 'error' as const,
+        message: 'An error occurred while fetching bus information. Please try again.',
+      };
+    }
+
+    if (locationLoading || driverLoading) {
+      return {
+        type: 'loading' as const,
+        message: 'Loading bus information...',
+      };
+    }
+
+    if (!driver) {
+      return {
+        type: 'not-found' as const,
+        message: 'Bus not found. Please verify the bus number is correct.',
+      };
+    }
+
+    if (!driver.isSharingLocation) {
+      return {
+        type: 'not-sharing' as const,
+        message: 'The driver is not currently sharing their location.',
+      };
+    }
+
+    if (!location) {
+      return {
+        type: 'no-location' as const,
+        message: 'No location data available yet. The driver may have just started sharing.',
+      };
+    }
+
+    return {
+      type: 'active' as const,
+      message: 'Bus is sharing its location.',
+    };
+  };
+
+  const busStatus = getBusStatus();
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -120,7 +169,7 @@ export default function TravellerDashboard({ onNavigate }: TravellerDashboardPro
           </Card>
 
           {/* Tracking Info */}
-          {trackingBus && (
+          {trackingBus && busStatus && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -134,8 +183,9 @@ export default function TravellerDashboard({ onNavigate }: TravellerDashboardPro
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={location ? 'default' : 'secondary'}>
-                      {location ? 'Active' : 'No Signal'}
+                    <Badge variant={busStatus.type === 'active' ? 'default' : 'secondary'}>
+                      {busStatus.type === 'active' ? 'Active' : 
+                       busStatus.type === 'loading' ? 'Loading' : 'No Signal'}
                     </Badge>
                     {location && (
                       <Button variant="ghost" size="icon" onClick={handleRefresh}>
@@ -146,7 +196,7 @@ export default function TravellerDashboard({ onNavigate }: TravellerDashboardPro
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {location ? (
+                {busStatus.type === 'active' && location ? (
                   <>
                     <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div>
@@ -169,10 +219,38 @@ export default function TravellerDashboard({ onNavigate }: TravellerDashboardPro
                       </AlertDescription>
                     </Alert>
                   </>
+                ) : busStatus.type === 'error' ? (
+                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+                    <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <AlertDescription className="text-red-900 dark:text-red-100">
+                      <strong>Error:</strong> {busStatus.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : busStatus.type === 'not-found' ? (
+                  <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                    <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                    <AlertDescription className="text-orange-900 dark:text-orange-100">
+                      <strong>Bus Not Found:</strong> {busStatus.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : busStatus.type === 'not-sharing' ? (
+                  <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                    <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-900 dark:text-yellow-100">
+                      <strong>Location Sharing Disabled:</strong> {busStatus.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : busStatus.type === 'no-location' ? (
+                  <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                    <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-900 dark:text-yellow-100">
+                      <strong>No Location Data:</strong> {busStatus.message}
+                    </AlertDescription>
+                  </Alert>
                 ) : (
-                  <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                    <p className="text-sm text-yellow-900 dark:text-yellow-100">
-                      <strong>No location data available.</strong> The bus may not be sharing its location or the bus number may be incorrect. Please verify the bus number with your driver.
+                  <div className="p-4 bg-gray-50 dark:bg-gray-950 rounded-lg border border-gray-200 dark:border-gray-800">
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {busStatus.message}
                     </p>
                   </div>
                 )}

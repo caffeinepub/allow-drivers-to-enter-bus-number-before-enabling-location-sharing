@@ -1,69 +1,50 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Bus tracking app where drivers register/sign in with email + strong password, enter a bus number, and share live location; users register/sign in and can view bus locations by bus number; includes an admin account with default credentials.",
+  "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "User cannot register successfully for any role (registration failing across all roles)."
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-driver-dashboard-so-that-if-the-logged-in-driver-does-not-yet-have-a-bus-number-the-ui-shows-a-bus-number-entry-form-and-prevents-location-sharing-until-a-valid-bus-number-is-set",
-      "title": "Update the Driver Dashboard so that if the logged-in driver does not yet have a bus number, the UI shows a bus number entry form and prevents location sharing until a valid bus number is set.",
+      "id": "feature-diagnose-and-fix-the-end-to-end-registration-flow-so-that-a-signed-in-user-can-successfully-register-as-traveller-or-driver-from-the-register-page-without-the-backend-trapping-and-the-ui-transitions-to-the-correct-dashboard-after-a-successful-registration",
+      "title": "Diagnose and fix the end-to-end registration flow so that a signed-in user can successfully register as Traveller or Driver from the Register page without the backend trapping, and the UI transitions to the correct dashboard after a successful registration.",
       "reqIds": [
-        "REQ-1"
+        "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-implement-the-bus-number-submission-on-the-driver-dashboard-by-calling-the-existing-driver-registration-flow-then-refresh-the-current-user-profile-so-the-entered-bus-number-is-used-by-the-location-sharing-toggle-and-location-updates",
-      "title": "Implement the bus number submission on the Driver Dashboard by calling the existing driver registration flow, then refresh the current user profile so the entered bus number is used by the location sharing toggle and location updates.",
+      "id": "feature-fix-backend-role-profile-values-so-the-frontend-can-reliably-determine-whether-the-registered-user-is-an-admin-driver-or-traveller-based-on-getcalleruserprofile-output-including-aligning-the-backend-s-userprofile-role-encoding-with-what-the-generated-frontend-types-represent",
+      "title": "Fix backend role/profile values so the frontend can reliably determine whether the registered user is an admin, driver, or traveller based on getCallerUserProfile output (including aligning the backend’s UserProfile.role encoding with what the generated frontend types represent).",
       "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-adjust-the-driver-dashboard-bus-info-and-location-sharing-ui-to-handle-the-no-bus-number-yet-state-cleanly-avoid-rendering-empty-badges-messages-like-bus-and-ensure-location-updates-are-only-sent-when-sharing-is-enabled-and-a-bus-number-exists",
-      "title": "Adjust the Driver Dashboard bus info and location sharing UI to handle the 'no bus number yet' state cleanly (avoid rendering empty badges/messages like 'Bus '), and ensure location updates are only sent when sharing is enabled and a bus number exists.",
-      "reqIds": [
-        "REQ-3"
+        "REQ-6"
       ],
       "version": 1
     }
   ],
   "new_feature_requests": [
     {
-      "id": "AR-1",
-      "summary": "Admin account with default username/password for initial access",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
       "id": "AR-2",
-      "summary": "Driver registration and sign-in using email and strong password",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "User registration and sign-in using email and strong password",
-      "reqIds": [],
+      "summary": "Update backend registration methods to avoid using Runtime.trap for expected registration errors; return RegistrationStatus.failure with an English message instead, so the frontend can display actionable errors (including for admin registration).",
+      "reqIds": [
+        "REQ-5"
+      ],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Driver can enter/select bus number and then enable/disable live location sharing",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Users can view live bus locations filtered/queried by bus number",
-      "reqIds": [],
+      "summary": "Enable a workable admin registration experience: if the system has no admin configured yet, allow the first admin to be created; otherwise, restrict admin creation per existing authorization rules and return a friendly failure message when the caller is not allowed.",
+      "reqIds": [
+        "REQ-7"
+      ],
       "status": "pending"
     }
   ],
-  "projectName": "Allow drivers to enter bus number before enabling location sharing",
+  "gameProjectType": "none",
+  "projectName": "College Bus Tracking",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

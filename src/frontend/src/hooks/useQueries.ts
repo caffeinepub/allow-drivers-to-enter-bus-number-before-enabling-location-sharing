@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import type { UserProfile, Driver, User, Location, RegistrationStatus, LocationUpdateStatus, UserRole } from '../backend';
 import { Principal } from '@dfinity/principal';
+import { normalizeBackendError } from '../utils/backendErrors';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -10,7 +11,15 @@ export function useGetCallerUserProfile() {
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
+      try {
+        return await actor.getCallerUserProfile();
+      } catch (error: any) {
+        // Handle authorization errors gracefully - user might not be registered yet
+        if (error.message && error.message.includes('Unauthorized')) {
+          return null;
+        }
+        throw error;
+      }
     },
     enabled: !!actor && !actorFetching,
     retry: false,
@@ -30,7 +39,11 @@ export function useSaveCallerUserProfile() {
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.saveCallerUserProfile(profile);
+      try {
+        return await actor.saveCallerUserProfile(profile);
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -42,11 +55,15 @@ export function useAdminRegister() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<RegistrationStatus, Error, string>({
     mutationFn: async (roleText: string) => {
       if (!actor) throw new Error('Actor not available');
-      const result = await actor.adminRegister(roleText);
-      return result;
+      try {
+        const result = await actor.adminRegister(roleText);
+        return result;
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -60,11 +77,15 @@ export function useDriverRegister() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<RegistrationStatus, Error, string>({
     mutationFn: async (busNumber: string) => {
       if (!actor) throw new Error('Actor not available');
-      const result = await actor.driverRegister(busNumber);
-      return result;
+      try {
+        const result = await actor.driverRegister(busNumber);
+        return result;
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: (result, busNumber) => {
       // Invalidate profile to get the updated busNumber
@@ -83,11 +104,15 @@ export function useTravellerRegister() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<RegistrationStatus, Error, void>({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      const result = await actor.travellerRegister();
-      return result;
+      try {
+        const result = await actor.travellerRegister();
+        return result;
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -103,9 +128,18 @@ export function useGetAllDrivers() {
     queryKey: ['allDrivers'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllDrivers();
+      try {
+        return await actor.getAllDrivers();
+      } catch (error: any) {
+        if (error.message && error.message.includes('Unauthorized')) {
+          console.error('Authorization error fetching drivers:', error);
+          return [];
+        }
+        throw error;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 1,
   });
 }
 
@@ -116,9 +150,18 @@ export function useGetAllTravellers() {
     queryKey: ['allTravellers'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllTravellers();
+      try {
+        return await actor.getAllTravellers();
+      } catch (error: any) {
+        if (error.message && error.message.includes('Unauthorized')) {
+          console.error('Authorization error fetching travellers:', error);
+          return [];
+        }
+        throw error;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 1,
   });
 }
 
@@ -129,27 +172,18 @@ export function useGetDriver(busNumber: string | null) {
     queryKey: ['driver', busNumber],
     queryFn: async () => {
       if (!actor || !busNumber) return null;
-      return actor.getDriver(busNumber);
+      try {
+        return await actor.getDriver(busNumber);
+      } catch (error: any) {
+        if (error.message && error.message.includes('Unauthorized')) {
+          console.error('Authorization error fetching driver:', error);
+          return null;
+        }
+        throw error;
+      }
     },
     enabled: !!actor && !isFetching && !!busNumber,
-    refetchInterval: 3000,
-  });
-}
-
-export function useToggleLocationSharing() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (busNumber: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.toggleLocationSharing(busNumber);
-    },
-    onSuccess: (_, busNumber) => {
-      queryClient.invalidateQueries({ queryKey: ['driver', busNumber] });
-      queryClient.invalidateQueries({ queryKey: ['allDrivers'] });
-      queryClient.invalidateQueries({ queryKey: ['busLocation', busNumber] });
-    },
+    retry: 1,
   });
 }
 
@@ -160,11 +194,34 @@ export function useUpdateLocation() {
   return useMutation({
     mutationFn: async ({ busNumber, location }: { busNumber: string; location: Location }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateLocation(busNumber, location);
+      try {
+        return await actor.updateLocation(busNumber, location);
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: (_, { busNumber }) => {
       queryClient.invalidateQueries({ queryKey: ['driver', busNumber] });
       queryClient.invalidateQueries({ queryKey: ['busLocation', busNumber] });
+    },
+  });
+}
+
+export function useToggleLocationSharing() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (busNumber: string) => {
+      if (!actor) throw new Error('Actor not available');
+      try {
+        return await actor.toggleLocationSharing(busNumber);
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
+    },
+    onSuccess: (_, busNumber) => {
+      queryClient.invalidateQueries({ queryKey: ['driver', busNumber] });
     },
   });
 }
@@ -176,10 +233,20 @@ export function useGetBusLocation(busNumber: string | null) {
     queryKey: ['busLocation', busNumber],
     queryFn: async () => {
       if (!actor || !busNumber) return null;
-      return actor.getBusLocation(busNumber);
+      try {
+        return await actor.getBusLocation(busNumber);
+      } catch (error: any) {
+        // Handle authorization errors gracefully
+        if (error.message && error.message.includes('Unauthorized')) {
+          console.error('Authorization error fetching bus location:', error);
+          return null;
+        }
+        throw error;
+      }
     },
     enabled: !!actor && !isFetching && !!busNumber,
     refetchInterval: 3000,
+    retry: 1,
   });
 }
 
@@ -188,9 +255,13 @@ export function useDeactivateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: Principal) => {
+    mutationFn: async (user: Principal) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.deactivateUser(userId);
+      try {
+        return await actor.deactivateUser(user);
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allDrivers'] });
@@ -204,26 +275,17 @@ export function useActivateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: Principal) => {
+    mutationFn: async (user: Principal) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.activateUser(userId);
+      try {
+        return await actor.activateUser(user);
+      } catch (error) {
+        throw new Error(normalizeBackendError(error));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allDrivers'] });
       queryClient.invalidateQueries({ queryKey: ['allTravellers'] });
     },
-  });
-}
-
-export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerAdmin();
-    },
-    enabled: !!actor && !isFetching,
   });
 }

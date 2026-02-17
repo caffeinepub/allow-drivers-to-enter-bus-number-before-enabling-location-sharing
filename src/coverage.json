@@ -1,69 +1,74 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T16:50:47.746Z",
+  "generatedAt": "2026-02-17T19:24:11.877Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 4,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Update the Driver Dashboard so that if the logged-in driver does not yet have a bus number, the UI shows a bus number entry form and prevents location sharing until a valid bus number is set.",
+        "id": "REQ-4",
+        "summary": "Diagnose and fix the end-to-end registration flow so that a signed-in user can successfully register as Traveller or Driver from the Register page without the backend trapping, and the UI transitions to the correct dashboard after a successful registration.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/DriverDashboard.tsx"
+          "frontend/src/utils/backendErrors.ts",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/RegisterPage.tsx",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/DriverDashboard.tsx"
+          "frontend/src/utils/backendErrors.ts",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/RegisterPage.tsx",
+          "frontend/src/App.tsx"
         ]
       },
       {
-        "id": "REQ-2",
-        "summary": "Implement the bus number submission on the Driver Dashboard by calling the existing driver registration flow, then refresh the current user profile so the entered bus number is used by the location sharing toggle and location updates.",
+        "id": "REQ-5",
+        "summary": "Update backend registration methods to avoid using Runtime.trap for expected registration errors; return RegistrationStatus.failure with an English message instead, so the frontend can display actionable errors (including for admin registration).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Fix backend role/profile values so the frontend can reliably determine whether the registered user is an admin, driver, or traveller based on getCallerUserProfile output (including aligning the backend’s UserProfile.role encoding with what the generated frontend types represent).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/DriverDashboard.tsx"
+          "frontend/src/App.tsx",
+          "frontend/src/components/Header.tsx",
+          "frontend/src/pages/RegisterPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/DriverDashboard.tsx"
+          "frontend/src/App.tsx",
+          "frontend/src/components/Header.tsx",
+          "frontend/src/pages/RegisterPage.tsx"
         ]
       },
       {
-        "id": "REQ-3",
-        "summary": "Adjust the Driver Dashboard bus info and location sharing UI to handle the 'no bus number yet' state cleanly (avoid rendering empty badges/messages like 'Bus '), and ensure location updates are only sent when sharing is enabled and a bus number exists.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/DriverDashboard.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/DriverDashboard.tsx"
-        ]
+        "id": "REQ-7",
+        "summary": "Enable a workable admin registration experience: if the system has no admin configured yet, allow the first admin to be created; otherwise, restrict admin creation per existing authorization rules and return a friendly failure message when the caller is not allowed.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
-    "build-template/Dockerfile",
-    "build-template/LICENSE",
-    "build-template/README.md",
-    "build-template/deploy.sh",
-    "build-template/icp.yaml",
-    "build-template/src/backend/canister.yaml",
-    "build-template/src/frontend/canister.yaml",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/config.ts",
-    "frontend/src/hooks/useInternetIdentity.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/components/Header.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/DriverDashboard.tsx",
+    "frontend/src/pages/RegisterPage.tsx",
+    "frontend/src/utils/backendErrors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
