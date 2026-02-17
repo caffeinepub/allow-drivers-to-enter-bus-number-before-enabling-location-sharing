@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Bus tracking app where drivers register/sign in with email + strong password, enter a bus number, and share live location; users register/sign in and can view bus locations by bus number; includes an admin account with default credentials.",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-update-the-driver-dashboard-so-that-if-the-logged-in-driver-does-not-yet-have-a-bus-number-the-ui-shows-a-bus-number-entry-form-and-prevents-location-sharing-until-a-valid-bus-number-is-set",
+      "title": "Update the Driver Dashboard so that if the logged-in driver does not yet have a bus number, the UI shows a bus number entry form and prevents location sharing until a valid bus number is set.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-bus-number-submission-on-the-driver-dashboard-by-calling-the-existing-driver-registration-flow-then-refresh-the-current-user-profile-so-the-entered-bus-number-is-used-by-the-location-sharing-toggle-and-location-updates",
+      "title": "Implement the bus number submission on the Driver Dashboard by calling the existing driver registration flow, then refresh the current user profile so the entered bus number is used by the location sharing toggle and location updates.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-adjust-the-driver-dashboard-bus-info-and-location-sharing-ui-to-handle-the-no-bus-number-yet-state-cleanly-avoid-rendering-empty-badges-messages-like-bus-and-ensure-location-updates-are-only-sent-when-sharing-is-enabled-and-a-bus-number-exists",
+      "title": "Adjust the Driver Dashboard bus info and location sharing UI to handle the 'no bus number yet' state cleanly (avoid rendering empty badges/messages like 'Bus '), and ensure location updates are only sent when sharing is enabled and a bus number exists.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Admin account with default username/password for initial access",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Driver registration and sign-in using email and strong password",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "User registration and sign-in using email and strong password",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Driver can enter/select bus number and then enable/disable live location sharing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Users can view live bus locations filtered/queried by bus number",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Allow drivers to enter bus number before enabling location sharing",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

@@ -1,0 +1,75 @@
+{
+  "kind": "build_request",
+  "title": "Allow drivers to enter bus number before enabling location sharing",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Update the Driver Dashboard so that if the logged-in driver does not yet have a bus number, the UI shows a bus number entry form and prevents location sharing until a valid bus number is set.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I need the driver have the option to enter the bus number and then turn ok the location"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a driver profile has no bus number (null/empty), the Driver Dashboard shows an editable 'Bus Number' input and a clear call-to-action (e.g., 'Save' / 'Register bus').",
+        "The 'Share Live Location' switch is disabled (and/or the location sharing card is replaced by an info prompt) until a bus number is successfully saved/registered.",
+        "All user-facing text related to this flow is in English."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Implement the bus number submission on the Driver Dashboard by calling the existing driver registration flow, then refresh the current user profile so the entered bus number is used by the location sharing toggle and location updates.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I need the driver have the option to enter the bus number and then turn ok the location"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Submitting the bus number from the Driver Dashboard calls the existing driver registration mutation (driverRegister) and shows success/failure feedback.",
+        "On success, the app refreshes the cached caller profile and driver data so the dashboard immediately displays the saved bus number and enables the 'Share Live Location' toggle.",
+        "If registration fails (e.g., bus number already registered or invalid length), the dashboard shows the error and does not enable location sharing."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Adjust the Driver Dashboard bus info and location sharing UI to handle the 'no bus number yet' state cleanly (avoid rendering empty badges/messages like 'Bus '), and ensure location updates are only sent when sharing is enabled and a bus number exists.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I need the driver have the option to enter the bus number and then turn ok the location"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When no bus number exists, the dashboard does not render an empty bus badge/value; instead it shows a clear placeholder/state.",
+        "The location update effect does not attempt to send updates when bus number is empty or sharing is off (no unnecessary updateLocation calls).",
+        "Once a bus number is set and sharing is toggled on, location updates proceed normally as before."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not edit files under frontend/src/components/ui (read-only components must be composed, not modified).",
+    "Do not modify immutable hook files: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx.",
+    "Keep backend as a single Motoko actor in backend/main.mo; add migration logic only if state schema changes (not expected for this request)."
+  ],
+  "nonGoals": [
+    "Implementing email/password authentication (the current app uses Internet Identity).",
+    "Adding the ability for a driver to change bus number after already registering a bus number (requires backend data migration and re-keying the drivers map).",
+    "Any admin default username/password system (not part of this specific request)."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

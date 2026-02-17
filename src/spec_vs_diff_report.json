@@ -1,0 +1,38 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-10T16:50:47.744Z",
+  "summary": "Diff appears to implement driver bus-number gating on the Driver Dashboard and adds React Query cache invalidation after driverRegister, but it also includes unrequested/constraint-violating changes (notably modifying an immutable hook file) and adds a project_state.json describing non-goal features (email/password + default admin creds). Due to truncation, some UI acceptance criteria cannot be fully verified from the provided evidence.",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "Modified an immutable hook file that was explicitly listed as 'do not modify' (useInternetIdentity.ts).",
+      "reason": "BuildRequest constraints prohibit changes to frontend/src/hooks/useInternetIdentity.ts (and related immutable hook files), but the diff shows it was modified.",
+      "evidence": [
+        "frontend/src/hooks/useInternetIdentity.ts"
+      ]
+    },
+    {
+      "description": "Introduced/recorded non-goal features: email/password authentication and an admin account with default credentials.",
+      "reason": "BuildRequest non-goals explicitly exclude email/password auth and any admin default username/password system, yet the added project_state.json summary describes these features.",
+      "evidence": [
+        "project_state.json"
+      ]
+    },
+    {
+      "description": "General unrequested product/UX changes across multiple pages (e.g., App navigation defaulting to login, landing page content, map animations, admin dashboard text about a default admin).",
+      "reason": "These changes are described in frontend-file-summaries.txt but are not requested in REQ-1..REQ-3, which are limited to Driver Dashboard bus-number gating and related query refresh behavior.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.68,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/hooks/useInternetIdentity.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/DriverDashboard.tsx",
+    "project_state.json"
+  ]
+}

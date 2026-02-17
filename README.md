@@ -1,2 +1,3 @@
-# allow-drivers-to-enter-bus-number-before-enabling-location-sharing
-Exported from Caffeine project: Allow drivers to enter bus number before enabling location sharing
+## 
+
+To run app build and run docker image: `docker build -t app . docker run -it --network host app`

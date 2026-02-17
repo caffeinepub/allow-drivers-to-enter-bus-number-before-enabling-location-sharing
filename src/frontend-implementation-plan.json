@@ -1,0 +1,60 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Driver bus number gating for location sharing",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Gate Driver Dashboard location sharing behind an initial bus number entry step when the driver has no bus number yet.",
+      "acceptanceCriteria": [
+        "When a driver profile has no bus number (null/empty), the Driver Dashboard shows an editable 'Bus Number' input and a clear call-to-action (e.g., 'Save' / 'Register bus').",
+        "The 'Share Live Location' switch is disabled (and/or the location sharing card is replaced by an info prompt) until a bus number is successfully saved/registered.",
+        "All user-facing text related to this flow is in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/DriverDashboard.tsx",
+          "operation": "modify",
+          "description": "Add a 'bus number required' state to the Driver Dashboard: when the caller profile busNumber is empty, render a bus number entry form (Input + Button composed from existing shadcn/ui components; do not modify any files under frontend/src/components/ui) and prevent location sharing by disabling/hiding the share UI until a valid bus number is saved. Ensure all new labels, helper text, and prompts are English."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Submit bus number from Driver Dashboard using the existing driver registration mutation and refresh cached profile/driver data for immediate UI unlock.",
+      "acceptanceCriteria": [
+        "Submitting the bus number from the Driver Dashboard calls the existing driver registration mutation (driverRegister) and shows success/failure feedback.",
+        "On success, the app refreshes the cached caller profile and driver data so the dashboard immediately displays the saved bus number and enables the 'Share Live Location' toggle.",
+        "If registration fails (e.g., bus number already registered or invalid length), the dashboard shows the error and does not enable location sharing."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Enhance the existing useDriverRegister mutation to invalidate/refetch any driver-specific cached data that should update immediately after registration (in addition to currentUserProfile), so the Driver Dashboard can immediately reflect the saved bus number and related driver state without a hard reload."
+        },
+        {
+          "path": "frontend/src/pages/DriverDashboard.tsx",
+          "operation": "modify",
+          "description": "Wire the new bus number form to the existing useDriverRegister mutation; add basic client-side validation (e.g., trimmed non-empty and a simple format/length check consistent with the app) and show success/failure feedback (toast and/or inline alert). On success, refetch/invalidate the caller profile query (and any relevant driver query) so the UI immediately shows the saved bus number and enables location sharing; on failure, keep sharing disabled and show the backend-provided error message."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Cleanly handle the no-bus-number state in bus info and location sharing UI and ensure location updates only send when both sharing is enabled and a bus number exists.",
+      "acceptanceCriteria": [
+        "When no bus number exists, the dashboard does not render an empty bus badge/value; instead it shows a clear placeholder/state.",
+        "The location update effect does not attempt to send updates when bus number is empty or sharing is off (no unnecessary updateLocation calls).",
+        "Once a bus number is set and sharing is toggled on, location updates proceed normally as before."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/DriverDashboard.tsx",
+          "operation": "modify",
+          "description": "Adjust Bus Information and Location Sharing UI rendering to avoid empty bus labels (e.g., no empty Badge or 'Bus ' strings when busNumber is empty). Replace with a clear placeholder and/or an informational prompt directing the user to register a bus number. Ensure the share toggle remains disabled when busNumber is empty, and add a defensive guard so location update mutations are never triggered unless both conditions are true: a bus number exists and sharing is enabled."
+        }
+      ]
+    }
+  ]
+}
