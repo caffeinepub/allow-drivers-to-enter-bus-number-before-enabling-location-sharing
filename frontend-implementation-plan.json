@@ -1,0 +1,41 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix user registration flow",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Investigate and fix the registration flow so that users can successfully register as admin, driver, or traveller with proper error handling and role-based navigation",
+      "acceptanceCriteria": [
+        "A user can complete registration as a traveller without errors",
+        "A user can complete registration as a driver (with a valid bus number) without errors",
+        "A user can complete registration as an admin without errors",
+        "After successful registration, the user is navigated to their role-based dashboard",
+        "If registration fails, a clear, user-friendly error message is displayed",
+        "The backend registerAdmin, registerDriver, and registerTraveller endpoints return success responses when called with valid inputs"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/RegisterPage.tsx",
+          "operation": "modify",
+          "description": "Fix the registration form submission handlers to correctly call the backend registration mutations (adminRegister, driverRegister, travellerRegister). Ensure each handler properly awaits the mutation result, checks the RegistrationStatus response type (success or failure variant), displays user-friendly error messages on failure using the backendErrors utility, and navigates to the appropriate role-based dashboard (/admin, /driver, /traveller) only after successful registration. Add loading states to prevent double submissions and ensure bus number validation for driver registration remains intact."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Review and fix the registration mutation hooks (useAdminRegister, useDriverRegister, useTravellerRegister) to ensure they correctly invoke the backend methods with the expected parameters and return the RegistrationStatus response type. Verify that the mutations properly invalidate the currentUserProfile query cache on success to trigger profile refresh. Ensure error handling propagates backend errors correctly to the UI layer."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Ensure the manualNavRef logic correctly prevents automatic routing from overriding post-registration navigation. Verify that after a successful registration, the user is not redirected away from their intended role-based dashboard by the auto-routing logic. The manualNavRef flag should be set when navigating programmatically from RegisterPage and respected in the routing effect."
+        },
+        {
+          "path": "frontend/src/utils/backendErrors.ts",
+          "operation": "modify",
+          "description": "Enhance the error normalization utility to handle RegistrationStatus failure responses from the backend. Ensure that when the backend returns a failure variant with an error message string, that message is extracted and returned as a user-friendly error message for display in the registration form."
+        }
+      ]
+    }
+  ]
+}

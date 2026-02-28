@@ -1,0 +1,40 @@
+{
+  "kind": "build_request",
+  "title": "Fix user registration flow",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Investigate and fix the registration flow so that users can successfully register as admin, driver, or traveller. Ensure the RegisterPage correctly calls the backend registration mutations, handles errors gracefully, and navigates to the appropriate dashboard upon successful registration.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "No I can't register"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A user can complete registration as a traveller without errors",
+        "A user can complete registration as a driver (with a valid bus number) without errors",
+        "A user can complete registration as an admin without errors",
+        "After successful registration, the user is navigated to their role-based dashboard",
+        "If registration fails, a clear, user-friendly error message is displayed",
+        "The backend registerAdmin, registerDriver, and registerTraveller endpoints return success responses when called with valid inputs"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui"
+  ],
+  "nonGoals": [
+    "Changing the authentication method (Internet Identity remains the only auth provider)",
+    "Redesigning the registration UI beyond what is needed to fix the broken flow",
+    "Adding new user roles"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

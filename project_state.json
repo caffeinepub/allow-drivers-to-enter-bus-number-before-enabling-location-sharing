@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Project involves a traveller dashboard app with registration and location display features.",
+  "architectural_notes": [],
+  "known_issues": [
+    "User registration is broken — users cannot register"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-investigate-and-fix-the-registration-flow-so-that-users-can-successfully-register-as-admin-driver-or-traveller-ensure-the-registerpage-correctly-calls-the-backend-registration-mutations-handles-errors-gracefully-and-navigates-to-the-appropriate-dashboard-upon-successful-registration",
+      "title": "Investigate and fix the registration flow so that users can successfully register as admin, driver, or traveller. Ensure the RegisterPage correctly calls the backend registration mutations, handles errors gracefully, and navigates to the appropriate dashboard upon successful registration.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [],
+  "gameProjectType": "none",
+  "projectName": "Fix user registration flow",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
